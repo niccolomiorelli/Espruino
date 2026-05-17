@@ -80,8 +80,18 @@ info = {
      'SOURCES += libs/misc/hrm_vc31.c',
 # Standard open-source heart rate algorithm:
 #    'SOURCES += libs/misc/heartrate.c',
-# Proprietary heart rate algorithm:
-     'SOURCES += libs/misc/heartrate_vc31_binary.c', 'DEFINES += -DHEARTRATE_VC31_BINARY=1', 'PRECOMPILED_OBJS += libs/misc/vc31_binary/algo.o libs/misc/vc31_binary/modle5_10.o libs/misc/vc31_binary/modle5_11.o libs/misc/vc31_binary/modle5_12.o libs/misc/vc31_binary/modle5_13.o libs/misc/vc31_binary/modle5_14.o libs/misc/vc31_binary/modle5_15.o libs/misc/vc31_binary/modle5_16.o libs/misc/vc31_binary/modle5_17.o libs/misc/vc31_binary/modle5_18.o libs/misc/vc31_binary/modle5_1.o libs/misc/vc31_binary/modle5_2.o libs/misc/vc31_binary/modle5_3.o libs/misc/vc31_binary/modle5_4.o libs/misc/vc31_binary/modle5_5.o libs/misc/vc31_binary/modle5_6.o libs/misc/vc31_binary/modle5_7.o libs/misc/vc31_binary/modle5_8.o libs/misc/vc31_binary/modle5_9.o',
+# TRUST-PPG4 heart rate algorithm (replaces proprietary binary):
+     'SOURCES += libs/misc/heartrate_trust_ppg4.c',
+     'DEFINES += -DHEARTRATE_DEVICE_VC31=1',
+     'INCLUDE += -I$(ROOT)/libs/misc/trust_ppg4',
+     'SOURCES += libs/misc/trust_ppg4/bandpass_filter.c',
+     'SOURCES += libs/misc/trust_ppg4/rolling_stats_float.c',
+     'SOURCES += libs/misc/trust_ppg4/adaptive_filter_float.c',
+     'SOURCES += libs/misc/trust_ppg4/fft_library_float.c',
+     'SOURCES += libs/misc/trust_ppg4/kalman_filter_float.c',
+     'SOURCES += libs/misc/trust_ppg4/trust_ppg4_heartrate.c',
+# Proprietary heart rate algorithm (disabled — replaced by TRUST-PPG4):
+#    'SOURCES += libs/misc/heartrate_vc31_binary.c', 'DEFINES += -DHEARTRATE_VC31_BINARY=1', 'PRECOMPILED_OBJS += libs/misc/vc31_binary/algo.o libs/misc/vc31_binary/modle5_10.o libs/misc/vc31_binary/modle5_11.o libs/misc/vc31_binary/modle5_12.o libs/misc/vc31_binary/modle5_13.o libs/misc/vc31_binary/modle5_14.o libs/misc/vc31_binary/modle5_15.o libs/misc/vc31_binary/modle5_16.o libs/misc/vc31_binary/modle5_17.o libs/misc/vc31_binary/modle5_18.o libs/misc/vc31_binary/modle5_1.o libs/misc/vc31_binary/modle5_2.o libs/misc/vc31_binary/modle5_3.o libs/misc/vc31_binary/modle5_4.o libs/misc/vc31_binary/modle5_5.o libs/misc/vc31_binary/modle5_6.o libs/misc/vc31_binary/modle5_7.o libs/misc/vc31_binary/modle5_8.o libs/misc/vc31_binary/modle5_9.o',
 # ------------------------
      'SOURCES += libs/misc/unistroke.c',
      'WRAPPERSOURCES += libs/misc/jswrap_unistroke.c',

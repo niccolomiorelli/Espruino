@@ -27,7 +27,6 @@ FIR filter designed with http://t-filter.engineerjs.com/
 
 AccelFilter_get modified to return 8 bits of fractional
 data.
-==========================================================
 
 Source Code Tab:
 
