@@ -96,6 +96,8 @@ jobs:
         BOARD: ${{ matrix.board }} 
         UPLOADTOKEN: ${{ secrets.UPLOADTOKEN }}  
       run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install nrfutil
         source ./scripts/provision.sh  ${{ matrix.board }}
         make
         ./scripts/ci_upload.sh       
