@@ -24,4 +24,12 @@ int trust_ppg4_heartrate(time_delta_ms_t delta_ms,
  */
 int trust_ppg4_get_last_confidence(void);
 
+/**
+ * Return cycle counts from the last invocation (ARM Cortex-M4 DWT).
+ * On non-nRF52840 platforms both values are always 0.
+ * @param sample_cycles  Cycles for one 25 Hz call (per-sample cost).
+ * @param window_cycles  Cycles for the FFT window block (every 64 calls).
+ */
+void trust_ppg4_get_timing(uint32_t *sample_cycles, uint32_t *window_cycles);
+
 #endif

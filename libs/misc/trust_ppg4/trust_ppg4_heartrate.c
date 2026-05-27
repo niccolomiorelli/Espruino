@@ -25,6 +25,26 @@
 #include "kalman_filter_float.h"
 #include "trust_ppg4_heartrate.h"
 
+/* ---- DWT cycle counter (nRF52840 only) ---- */
+#ifdef NRF52840_XXAA
+#  define TP4_DWT_CTRL    (*((volatile uint32_t*)0xE0001000u))
+#  define TP4_DWT_CYCCNT  (*((volatile uint32_t*)0xE0001004u))
+#  define TP4_DEMCR       (*((volatile uint32_t*)0xE000EDFCu))
+#  define TP4_DWT_ENABLE() do { \
+       TP4_DEMCR     |= (1u << 24); \
+       TP4_DWT_CYCCNT = 0u;          \
+       TP4_DWT_CTRL  |= 1u;          \
+   } while(0)
+#else
+#  define TP4_DWT_ENABLE()  do {} while(0)
+#  define TP4_DWT_CYCCNT    0u
+#endif
+
+/** Cycles consumed by one 25 Hz call (per-sample cost). */
+static volatile uint32_t tp4_cycles_sample = 0;
+/** Cycles consumed by the FFT window block (every 64 calls). */
+static volatile uint32_t tp4_cycles_window = 0;
+
 /* ---- Parameters ---- */
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -239,6 +259,7 @@ static int main_algorithm_trust_ppg4(time_delta_ms_t delta_ms,
                                       accel_t accx, accel_t accy, accel_t accz)
 {
     (void)delta_ms;
+    TP4_DWT_ENABLE();
 
     /* --- Bandpass filter --- */
     accel_t acc_raw = (accel_t)sqrtf((float)accx*(float)accx +
@@ -312,10 +333,12 @@ static int main_algorithm_trust_ppg4(time_delta_ms_t delta_ms,
         if (first_window) {
             first_window = false;
             samples_since_last_HR = 0;
+            tp4_cycles_sample = TP4_DWT_CYCCNT;
             return HR;
         }
 
         samples_since_last_HR = 0;
+        uint32_t win_start = TP4_DWT_CYCCNT;
 
         /* --- State machine --- */
         int desired;
@@ -504,9 +527,17 @@ static int main_algorithm_trust_ppg4(time_delta_ms_t delta_ms,
             weighted_avg_conf(last_peaks, last_confs, N_LAST_SAVED, &HR_avg, &c_avg);
             update_ACC_model(HR_avg * 60.0f, HR_ACC, &model_a, &model_b, state);
         }
+        tp4_cycles_window = TP4_DWT_CYCCNT - win_start;
     }
 
+    tp4_cycles_sample = TP4_DWT_CYCCNT;
     return HR;
+}
+
+/* ---- Timing getter ---- */
+void trust_ppg4_get_timing(uint32_t *sample_cycles, uint32_t *window_cycles) {
+    *sample_cycles = tp4_cycles_sample;
+    *window_cycles = tp4_cycles_window;
 }
 
 /* ---- Public entry point with linear interpolation ---- */

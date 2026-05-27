@@ -132,4 +132,8 @@ void hrm_get_hrm_info(JsVar *o)
 void hrm_get_hrm_raw_info(JsVar *o)
 {
     jsvObjectSetBoolChild(o, "isBeat", hrmInfo.isBeat);
+    uint32_t sc, wc;
+    trust_ppg4_get_timing(&sc, &wc);
+    jsvObjectSetIntegerChild(o, "cyclesSample", (JsVarInt)sc);
+    jsvObjectSetIntegerChild(o, "cyclesWindow",  (JsVarInt)wc);
 }
