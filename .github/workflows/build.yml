@@ -100,30 +100,42 @@ jobs:
         pip install nrfutil
         source ./scripts/provision.sh  ${{ matrix.board }}
         make
+        if [ "${{ matrix.board }}" = "BANGLEJS2" ]; then
+          echo ""
+          echo "=========================================="
+          echo "BANGLEJS2 firmware memory usage"
+          echo "=========================================="
+
+          echo ""
+          echo "Looking for ELF files..."
+          find . -name "*.elf"
+
+          echo ""
+          ELF=$(find . -name "*.elf" | head -n 1)
+          echo "Selected ELF file: $ELF"
+
+          echo ""
+          echo "Checking arm-none-eabi-size location..."
+          which arm-none-eabi-size || true
+
+          echo ""
+          echo "Firmware size:"
+          arm-none-eabi-size "$ELF"
+
+          echo ""
+          echo "Computed memory usage:"
+          arm-none-eabi-size "$ELF" | awk 'NR==2 {
+            text=$1; data=$2; bss=$3;
+            flash=text+data;
+            ram=data+bss;
+            printf("Flash used: %d bytes\n", flash);
+            printf("RAM used:   %d bytes\n", ram);
+          }'
+
+          echo "=========================================="
+          echo ""
+        fi
         ./scripts/ci_upload.sh 
-    - name: Show firmware memory usage
-      if: ${{ matrix.board == 'BANGLEJS2' }}
-      run: |
-        echo "Looking for ELF files..."
-        find . -name "*.elf"
-
-        echo ""
-        ELF=$(find . -name "*.elf" | head -n 1)
-        echo "Selected ELF file: $ELF"
-
-        echo ""
-        echo "Firmware size:"
-        arm-none-eabi-size "$ELF"
-
-        echo ""
-        echo "Computed memory usage:"
-        arm-none-eabi-size "$ELF" | awk 'NR==2 {
-          text=$1; data=$2; bss=$3;
-          flash=text+data;
-          ram=data+bss;
-          printf("Flash used: %d bytes\n", flash);
-          printf("RAM used:   %d bytes\n", ram);
-        }'   
     - name: Upload ${{ matrix.board }} build artifact
       uses: actions/upload-artifact@v7.0.0
       with:
