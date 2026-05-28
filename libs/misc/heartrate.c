@@ -20,6 +20,22 @@
 #include "hrm.h"
 #include "jshardware.h"
 
+#ifdef NRF52840_XXAA
+#  define HRM_DWT_CTRL    (*((volatile uint32_t*)0xE0001000u))
+#  define HRM_DWT_CYCCNT  (*((volatile uint32_t*)0xE0001004u))
+#  define HRM_DEMCR       (*((volatile uint32_t*)0xE000EDFCu))
+#  define HRM_DWT_ENABLE() do { \
+       HRM_DEMCR     |= (1u << 24); \
+       HRM_DWT_CYCCNT = 0u;          \
+       HRM_DWT_CTRL  |= 1u;          \
+   } while(0)
+#else
+#  define HRM_DWT_ENABLE()  do {} while(0)
+#  define HRM_DWT_CYCCNT    0u
+#endif
+
+static volatile uint32_t hrm_cycles_call = 0;
+
 /*
 
 ==========================================================
@@ -350,6 +366,8 @@ bool hrm_had_beat() {
 
 /// Add new heart rate value
 bool hrm_new(int hrmValue, Vector3 *acc) {
+  HRM_DWT_ENABLE();
+  uint32_t hrm_t0 = HRM_DWT_CYCCNT;
   if (hrmValue<HRMVALUE_MIN) hrmValue=HRMVALUE_MIN;
   if (hrmValue>HRMVALUE_MAX) hrmValue=HRMVALUE_MAX;
   hrmInfo.raw = hrmValue;
@@ -387,6 +405,7 @@ bool hrm_new(int hrmValue, Vector3 *acc) {
     sample->filtered = hrmInfo.filtered;
   }
 
+  hrm_cycles_call = HRM_DWT_CYCCNT - hrm_t0;
   return hadBeat;
 }
 
@@ -407,4 +426,5 @@ void hrm_get_hrm_info(JsVar *o) {
 // Append extra information to an existing HRM-raw event object
 void hrm_get_hrm_raw_info(JsVar *o) {
   jsvObjectSetBoolChild(o,"isBeat", hrmInfo.isBeat);
+  jsvObjectSetChildAndUnLock(o, "cyclesSample", jsvNewFromInteger((JsVarInt)hrm_cycles_call));
 }
