@@ -23,6 +23,22 @@
 #include "jsinteractive.h"
 #include "vc31_binary/algo.h"
 
+#ifdef NRF52840_XXAA
+#  define VC31_DWT_CTRL    (*((volatile uint32_t*)0xE0001000u))
+#  define VC31_DWT_CYCCNT  (*((volatile uint32_t*)0xE0001004u))
+#  define VC31_DEMCR       (*((volatile uint32_t*)0xE000EDFCu))
+#  define VC31_DWT_ENABLE() do { \
+       VC31_DEMCR     |= (1u << 24); \
+       VC31_DWT_CYCCNT = 0u;          \
+       VC31_DWT_CTRL  |= 1u;          \
+   } while(0)
+#else
+#  define VC31_DWT_ENABLE()  do {} while(0)
+#  define VC31_DWT_CYCCNT    0u
+#endif
+
+static volatile uint32_t vc31_cycles_call = 0;
+
 HrmInfo hrmInfo;
 HrmSample hrmSamples[HRMSAMPLE_MAX];
 uint8_t hrmSampleCount;
@@ -72,9 +88,12 @@ bool hrm_new(int ppgValue, Vector3 *acc) {
   inputData.envSample = vcInfo.envValue;
   hrmInfo.msSinceLastHRM += timeDiff;
   // TODO: The VC31 example code uses a static value here (eg hrmPollInterval) - maybe we should do this
+  VC31_DWT_ENABLE();
+  uint32_t vc31_t0 = VC31_DWT_CYCCNT;
   Algo_Input(&inputData, vcInfo.useStaticSampleTime ?  hrmPollInterval : timeDiff, hrmInfo.sportMode, 0/*surfaceRecogMode*/,0/*opticalAidMode*/);
   AlgoOutputData_t outputData;
   Algo_Output(&outputData);
+  vc31_cycles_call = VC31_DWT_CYCCNT - vc31_t0;
   //jsiConsolePrintf("HRM %d %d %d\n", outputData.hrData, outputData.reliability, hrmInfo.msSinceLastHRM);
   bool hadBeat = false;
   if (outputData.hrData!=hrmInfo.lastHRM ||
@@ -106,4 +125,5 @@ void hrm_get_hrm_info(JsVar *o) {
 
 // Append extra information to an existing HRM-raw event object
 void hrm_get_hrm_raw_info(JsVar *o) {
+  jsvObjectSetChildAndUnLock(o, "cyclesSample", jsvNewFromInteger((JsVarInt)vc31_cycles_call));
 }
