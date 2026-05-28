@@ -56,13 +56,13 @@ static volatile uint32_t tp4_cycles_window = 0;
 #define TP4_WINDOW_STEP   64
 #define TP4_SAMPLING_FREQ 25
 #ifndef TP4_N_PAD
-#define TP4_N_PAD        1024
+#define TP4_N_PAD        512
 #endif
 
-/* Physiological HR range (36–210 bpm) as FFT bin indices @25 Hz / 1024-point */
-#define LOW_FREQ_PHY_I   25
-#define HIGH_FREQ_PHY_I  143
-#define DELTA_HR_RANGE   34   /* ~50 bpm */
+/* Physiological HR range (36–210 bpm) as FFT bin indices @25 Hz / 512-point */
+#define LOW_FREQ_PHY_I   13 //25
+#define HIGH_FREQ_PHY_I  73 //143
+#define DELTA_HR_RANGE   17 //34   /* ~50 bpm */
 
 /* State machine */
 #define THRESHOLD_MOTION1   200.0f
@@ -123,10 +123,8 @@ static int     signal_buffer_next_i;
 static int     samples_since_last_HR;
 
 /* FFT workspace */
-static float              windowed_signal_in[TP4_WINDOW_LEN];
-static float              windowed_signal_out[TP4_WINDOW_LEN];
-static complex_number_float fft_input[TP4_WINDOW_LEN];
-static complex_number_float fft_input_padded[TP4_N_PAD];
+static float              windowed_signal_out[TP4_WINDOW_LEN]; /* also used as input to Hann window (in-place) */
+static complex_number_float fft_input_padded[TP4_N_PAD];        /* first WINDOW_LEN slots used before zero-padding */
 
 /* State machine */
 static int state;
@@ -215,8 +213,7 @@ void trust_ppg4_heartrate_init(void)
     memset(signal_PPG_buffer,  0, sizeof(signal_PPG_buffer));
     memset(signal_NLMS_buffer, 0, sizeof(signal_NLMS_buffer));
     memset(acc_magnitude,      0, sizeof(acc_magnitude));
-    memset(windowed_signal_in, 0, sizeof(windowed_signal_in));
-    memset(windowed_signal_out,0, sizeof(windowed_signal_out));
+    memset(windowed_signal_out, 0, sizeof(windowed_signal_out));
 
     signal_buffer_next_i  = 0;
     samples_since_last_HR = 0;
@@ -416,14 +413,14 @@ static int main_algorithm_trust_ppg4(time_delta_ms_t delta_ms,
                                                         : signal_NLMS_buffer;
         for (int i = 0; i < TP4_WINDOW_LEN; i++) {
             int bi = buffer_index_plus_fftLib(signal_buffer_next_i, i, TP4_WINDOW_LEN);
-            windowed_signal_in[i] = src[bi];
+            windowed_signal_out[i] = src[bi];
         }
-        apply_hann_window_fftLib_float(windowed_signal_in, windowed_signal_out, TP4_WINDOW_LEN);
+        apply_hann_window_fftLib_float(windowed_signal_out, windowed_signal_out, TP4_WINDOW_LEN);
         for (int i = 0; i < TP4_WINDOW_LEN; i++) {
-            fft_input[i].real = windowed_signal_out[i];
-            fft_input[i].imag = 0.0f;
+            fft_input_padded[i].real = windowed_signal_out[i];
+            fft_input_padded[i].imag = 0.0f;
         }
-        zero_pad_fftLib_float(fft_input, fft_input_padded, TP4_WINDOW_LEN);
+        zero_pad_fftLib_float(fft_input_padded, fft_input_padded, TP4_WINDOW_LEN);
         FFT_fftLib_float(fft_input_padded, 1.0f);
 
         /* --- Spectral magnitude + total power --- */
